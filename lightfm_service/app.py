@@ -81,15 +81,37 @@ def recommend_tasks():
 def update_behavior():
 	try:
 		data = request.get_json(force=True)
-		# Optional: use this to incrementally update interaction weights
+		# Note: Actual storage happens in Next.js API
+		# This endpoint is kept for backwards compatibility
+		# The recommender will pick up new interactions on next recommendation request
 		get_recommender().ingest_behavior_event(
 			user_id=str(data.get('userId', '')),
 			task_id=str(data.get('taskId', '')),
 			completed=bool(data.get('taskCompleted', False)),
 			time_spent=float(data.get('timeSpent', 0)),
 			difficulty=str(data.get('difficulty', 'medium')),
+			interaction_weight=float(data.get('interactionWeight', 1.0))
 		)
 		return jsonify({'status': 'ok'}), 200
+	except Exception as e:
+		return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/retrain', methods=['POST'])
+def retrain_model():
+	"""Manually trigger model retraining with latest data"""
+	try:
+		success = get_recommender().retrain()
+		if success:
+			return jsonify({
+				'status': 'ok',
+				'message': 'Model retrained successfully'
+			}), 200
+		else:
+			return jsonify({
+				'status': 'error',
+				'message': 'Model retraining failed'
+			}), 500
 	except Exception as e:
 		return jsonify({'error': str(e)}), 500
 
